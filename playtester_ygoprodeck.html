@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Local Playtester</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--sb:clamp(300px,22vw,440px);--w:clamp(50px,min(calc((100vw - var(--sb) - 60px)/10.6),calc((100vh - 230px)/6.2)),170px);--h:calc(var(--w)*1.46);--g:max(2px,calc(var(--w)*.02));--bg:#10141f;--pan:#1a2033;--ln:#3b4a6b;--ac:#e0b24a;--tx:#e6e9f2;--mu:#8796b5;--in:var(--in);--btn:#26304b;--btnh:#324062;--hand:#0c101a99}
+:root[data-theme=midnight]{--bg:#0a1228;--pan:#101b3a;--ln:#2d4a8a;--ac:#6cb4ff;--in:#0a1330;--btn:#1a2c58;--btnh:#27407a;--hand:#070d20aa}
+:root[data-theme=forest]{--bg:#0e1a14;--pan:#14261d;--ln:#2f5a44;--ac:#8fd694;--in:#0a130e;--btn:#1d3a2b;--btnh:#2a5240;--hand:#08110caa}
+:root[data-theme=crimson]{--bg:#1a0e12;--pan:#26141a;--ln:#6a2f3d;--ac:#ff7b8a;--in:#12080b;--btn:#3d1b25;--btnh:#57283a;--hand:#10070aaa}
+:root[data-theme=light]{--bg:#e6e9f1;--pan:#f5f6fa;--ln:#8f9bbd;--ac:#9a6410;--tx:#1b2233;--mu:#56627f;--in:#ffffff;--btn:#e1e5f0;--btnh:#d3d9ea;--hand:#f0f2f8cc}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{display:flex;background:var(--bg);color:var(--tx);font-family:"Segoe UI",system-ui,sans-serif;font-size:var(--fs,13px);line-height:1.4;user-select:none;overflow:hidden}
+button,.btn,select{background:var(--btn);color:var(--tx);border:1px solid var(--ln);border-radius:6px;padding:6px 11px;cursor:pointer;font:inherit}
+button:hover,.btn:hover{background:var(--btnh)}
+button:disabled{opacity:.4;cursor:default}
+input{background:var(--in);color:var(--tx);border:1px solid var(--ln);border-radius:6px;padding:5px;font:inherit}
+#side{width:var(--sb);flex:none;display:flex;flex-direction:column;background:var(--pan);border-right:1px solid var(--ln);min-height:0}
+#tabs{display:flex;overflow-x:auto;border-bottom:1px solid var(--ln)}
+#tabs button{flex:1;white-space:nowrap;border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:12px 4px;color:var(--mu)}
+#tabs button.on{color:var(--ac);border-color:var(--ac)}
+#tabs button[data-t=set]{flex:none;padding:12px 14px}
+.pane{flex:1;min-height:0;display:flex;flex-direction:column;padding:12px;gap:8px;overflow:auto}
+.pane[hidden]{display:none}
+#cimg{width:auto;max-width:100%;max-height:42vh;aspect-ratio:59/86;align-self:center;object-fit:contain;border-radius:6px;background:var(--in)}
+#cname{display:flex;align-items:flex-end;min-height:2.8em;font-size:calc(var(--cfs,13px)*1.4);font-weight:700;color:var(--ac)}
+#cmeta,#cstat{font-size:var(--cfs,13px);min-height:2.8em}#cmeta{color:var(--mu)}#cstat{color:var(--tx);font-weight:600;white-space:pre-line}
+#cdesc{font-size:var(--cfs,13px);white-space:pre-wrap;flex:1;min-height:90px;overflow:auto;background:var(--in);border:1px solid var(--ln);border-radius:6px;padding:10px;line-height:1.5;user-select:text}
+.tools{display:flex;gap:6px;flex-wrap:wrap}
+.list{flex:1;overflow:auto;background:var(--in);border:1px solid var(--ln);border-radius:6px;padding:6px 10px;line-height:1.5;user-select:text}
+.list div{padding:3px 0;border-bottom:1px solid #8884}
+#rcRec.on{background:#7a1f2b;border-color:#e0505f}
+#main{flex:1;display:flex;flex-direction:column;min-width:0;background:linear-gradient(rgba(0,0,0,var(--dim,0)),rgba(0,0,0,var(--dim,0))),var(--bgimg,none) center/cover no-repeat,var(--bg)}
+#bar{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--ln)}
+.sep{width:1px;align-self:stretch;background:var(--ln);margin:0 4px}
+#lpbox{display:flex;align-items:center;gap:6px}
+#lp{width:96px;font-size:22px;font-weight:700;color:var(--ac);text-align:center;padding:1px 4px}
+#amt{width:70px}
+#field{position:relative;flex:1;min-height:0;display:grid;grid-template-columns:repeat(7,var(--h));grid-template-rows:repeat(3,var(--h));gap:var(--g);justify-content:center;align-content:center;padding:16px}
+.zone{position:relative;width:var(--h);height:var(--h);display:flex;align-items:center;justify-content:center}
+.zone::after{content:'';position:absolute;left:50%;top:50%;width:var(--w);height:var(--h);transform:translate(-50%,-50%);border:1px dashed var(--ln);border-radius:6px;pointer-events:none}
+.zone::before{content:attr(data-l);position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--ln);font-size:calc(var(--w)*.16);text-align:center;pointer-events:none}
+.zone.over::after,#hand.over{border-color:var(--ac);background:#e0b24a1c}
+.zone.has:not(.mz)::before{display:none}
+.zs-sq .zone::after{width:var(--h);border-radius:4px}
+.zs-sq .badge{right:3px}
+.zs-both .zone.mz::before{content:'';position:absolute;left:50%;top:50%;width:var(--h);height:var(--w);transform:translate(-50%,-50%);border:1px dashed var(--ln);border-radius:6px;pointer-events:none}
+.card{position:relative;width:var(--w);height:var(--h);flex:none}
+.card img{width:100%;height:100%;object-fit:cover;border-radius:3px;display:block}
+.card.def{transform:rotate(-90deg)}
+.card.fd img{outline:2px solid #5aa9ff;outline-offset:-2px}
+.card.miss{background:#2a3350;border-radius:3px}
+.card.miss img{display:none}
+.card.miss::after{content:attr(data-id);position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:calc(var(--w)*.15);color:#9ab}
+.ct{position:absolute;left:3px;top:3px;z-index:3;background:#e8b923;color:#222;font-weight:700;border-radius:10px;padding:0 7px;font-size:calc(var(--w)*.2);cursor:grab;box-shadow:0 1px 4px #000a}
+.ct:empty{display:none}
+.badge{position:absolute;right:calc((var(--h) - var(--w))/2 + 3px);bottom:3px;z-index:2;background:#000c;border-radius:10px;padding:0 7px;font-size:calc(var(--w)*.18);pointer-events:none}
+#hand{display:flex;justify-content:center;align-items:flex-end;height:calc(var(--h) + 36px);padding:16px 16px 10px;border-top:1px solid var(--ln);background:var(--hand);transition:border-color .1s}
+#hand .card+.card{margin-left:calc(var(--w)*-.16)}
+#hand .card{transition:transform .12s}
+#hand .card:hover{transform:translateY(-14px);z-index:4}
+body.dragging #hand .card:hover{transform:none}
+#menu{position:fixed;z-index:50;display:none;min-width:180px;background:var(--pan);border:1px solid var(--ln);border-radius:6px;padding:4px;box-shadow:0 6px 24px #000a}
+#menu div{padding:6px 12px;border-radius:4px;cursor:pointer}#menu div:hover{background:#33405f}
+#modal{position:fixed;top:0;bottom:0;right:0;left:var(--sb);z-index:20;display:none;align-items:center;justify-content:center;background:#000b}
+#modal.ghost{opacity:0;pointer-events:none}
+#mbox{width:min(980px,92vw);max-height:84vh;display:flex;flex-direction:column;background:var(--pan);border:1px solid var(--ln);border-radius:8px}
+#mhead{display:flex;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--ln)}#mhead b{flex:1}
+#mgrid{display:flex;flex-wrap:wrap;gap:10px;padding:14px;overflow:auto}
+#mgrid .card{width:calc(var(--w)*.9);height:calc(var(--h)*.9)}
+#fx{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:15;pointer-events:none;opacity:0;transition:opacity .4s}
+#fx.show{opacity:1;transition:none}
+.die,.coin{display:flex;align-items:center;justify-content:center;font-weight:800;box-shadow:0 8px 40px #000c;animation:pop .5s ease-out}
+.die{width:calc(var(--w)*1.5);height:calc(var(--w)*1.5);border-radius:18%;background:#f4f1e8;color:#161616;font-size:calc(var(--w)*.95)}
+.coin{width:calc(var(--w)*1.7);height:calc(var(--w)*1.7);border-radius:50%;background:radial-gradient(#f6dc82,#c79a2d);color:#4b3606;font-size:calc(var(--w)*.34);border:4px solid #fff3b8}
+@keyframes pop{from{transform:rotate(-200deg) scale(.2)}to{transform:none}}
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#000d;border:1px solid var(--ln);padding:8px 16px;border-radius:20px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:60}
+#toast.show{opacity:1}
+.set{display:flex;flex-direction:column;gap:6px}.set input,.set select,.set textarea{width:100%}
+textarea{background:var(--in);color:var(--tx);border:1px solid var(--ln);border-radius:6px;padding:5px;font:inherit;resize:vertical}
+.chk{display:flex;flex-wrap:wrap;gap:4px 12px}.chk label{display:flex;gap:4px;align-items:center}.chk input{width:auto}
+[hidden]{display:none!important}
+</style></head><body>
+<div id="side">
+  <div id="tabs"><button data-t="info" class="on">Card info</button><button data-t="log">Log</button><button data-t="rec">Record combo</button><button data-t="cus">Custom</button><button data-t="set" title="Settings">⚙</button></div>
+  <div class="pane" id="p-info"><img id="cimg" alt=""><div id="cname">Hover a card</div><div id="cmeta"></div><div id="cstat"></div>
+    <div id="cdesc">Card data and pictures come from YGOPRODeck. They are downloaded once, kept in this browser, and reused after that. Add decks with “Add .ydk…”, “Paste deck”, by dropping .ydk files on the page, or with “Load folder…”.</div></div>
+  <div class="pane" id="p-log" hidden><div class="tools"><button id="lgCopy">Copy</button><button id="lgSave">Save .txt</button></div><div class="list" id="lgList"></div></div>
+  <div class="pane" id="p-cus" hidden>
+    <div style="color:var(--mu)">Custom cards are saved in the browser, and also in <b>playtester_files/</b> (cards.json, pics/, decks/) inside the folder you pick with “Load folder…”. IDs can contain letters.</div>
+    <div class="tools"><button id="cNew">New card</button><button id="cExp">Export JSON</button></div>
+    <div class="list" id="cList" style="flex:none;max-height:20vh"></div>
+    <label class="set">ID (letters, numbers, _ and -)<input id="cId"></label>
+    <label class="set">Name<input id="cName"></label>
+    <label class="set">Kind<select id="cKind"><option value="1">Monster</option><option value="2">Spell</option><option value="4">Trap</option></select></label>
+    <div id="cMon" class="set">
+      <div class="tools"><label class="set" style="flex:1">Race<select id="cRace"></select></label><label class="set" style="flex:1">Attribute<select id="cAttr"></select></label></div>
+      <div class="tools"><label class="set" style="flex:1 1 60px">Level/Rank/Link<input id="cLv" type="number" min="0" max="13"></label><label class="set" style="flex:1 1 60px">Scale L<input id="cSl" type="number" min="0" max="13"></label><label class="set" style="flex:1 1 60px">Scale R<input id="cSr" type="number" min="0" max="13"></label></div>
+      <div class="tools"><label class="set" style="flex:1">ATK (? allowed)<input id="cAtk"></label><label class="set" style="flex:1">DEF<input id="cDef"></label></div>
+      <div class="chk" id="cTf"></div>
+    </div>
+    <label class="set" id="cStW">Spell/Trap type<select id="cSt"></select></label>
+    <label class="set">Effect text<textarea id="cText" rows="6"></textarea></label>
+    <label class="set">Card image<input id="cImg" type="file" accept="image/*"></label>
+    <div class="tools"><button id="cSave">Save card</button><button id="cDel">Delete</button></div>
+    <b style="margin-top:8px">Custom decks</b>
+    <label class="set">Deck name<input id="cdName"></label>
+    <label class="set">Deck list (.ydk format, custom IDs allowed)<textarea id="cdText" rows="6"></textarea></label>
+    <div class="tools"><button id="cdCur">Copy current deck here</button><button id="cdSave">Save &amp; play deck</button></div>
+  </div>
+  <div class="pane" id="p-set" hidden>
+    <label class="set">Zone style<select id="zoneSel"><option value="card">Card-shaped zones</option><option value="both">Card zones + horizontal outline on monster zones</option><option value="sq">Square zones</option></select></label>
+    <label class="set">Theme<select id="themeSel"><option value="dark">Dark</option><option value="midnight">Midnight</option><option value="forest">Forest</option><option value="crimson">Crimson</option><option value="light">Light</option></select></label>
+    <div class="set"><b>Field background</b><div class="tools"><button id="bgPick">Choose image…</button><button id="bgClear">Remove</button></div>
+      <label class="set">Dimming: <input type="range" id="dimR" min="0" max="90"></label></div><input id="bgIn" type="file" accept="image/*" hidden>
+    <label class="set">Interface font size: <b id="fsv"></b><input type="range" id="fsR" min="10" max="24"></label>
+    <label class="set">Card text size: <b id="cfsv"></b><input type="range" id="cfsR" min="10" max="30"></label>
+    <div class="tools"><button id="setReset">Reset</button></div>
+    <div class="set"><b>Card data (YGOPRODeck)</b><div class="list" id="dbList" style="flex:none;max-height:30vh"></div><div class="tools"><button id="dbUpd">Check for update</button><button id="dbForce">Re-download all</button></div></div>
+    <div class="set"><b>Card back image</b><div class="tools"><button id="cvPick">Choose image…</button><button id="cvClear">Default</button></div></div><input id="cvIn" type="file" accept="image/*" hidden>
+    <label class="set">Look up a card ID<input id="lkId" placeholder="e.g. 12345678 or my_card_id"></label><div id="lkOut" style="color:var(--mu)"></div></div>
+  <div class="pane" id="p-rec" hidden><div class="tools"><button id="rcRec">● Record</button><button id="rcClear">Clear</button><button id="rcCopy">Copy</button><button id="rcSave">Save .txt</button></div><div class="list" id="rcList"></div></div>
+</div>
+<div id="main">
+  <div id="bar">
+    <select id="deckSel"></select><button id="bAdd" title="Add one or more .ydk deck files">Add .ydk…</button><button id="bPaste" title="Paste a .ydk list or a ydke:// link from the clipboard">Paste deck</button><button id="bLoad" title="Scan a folder for .ydk decks (also used to save custom card files)">Load folder…</button><button id="bPick" title="Choose a different folder" hidden>Change folder…</button><button id="bData" title="Download card data from YGOPRODeck">Card data</button>
+    <span class="sep"></span><button id="bNew">Restart</button><button id="bDraw">Draw</button><button id="bShuf">Shuffle</button><button id="bMill">Mill</button>
+    <span class="sep"></span><button id="bUndo">Undo</button><button id="bRedo">Redo</button>
+    <span class="sep"></span><div id="lpbox">LP <input id="lp" type="number"><input id="amt" type="number" value="1000" step="100"><button id="lpm">−</button><button id="lpp">+</button><button id="lph">½</button></div>
+    <span class="sep"></span><button id="bCoin">Coin</button><button id="bDice">Dice</button><button id="bTok">Token</button><span class="btn" id="bCt" draggable="true" title="Drag onto a card to add a counter; drag a counter off a card to remove it">✦ Counter</span>
+  </div>
+  <div id="field"><div id="fx"></div></div>
+  <div id="hand"></div>
+</div>
+<div id="menu"></div><div id="toast"></div>
+<div id="modal"><div id="mbox"><div id="mhead"><b id="mtitle"></b><button id="mshuf">Shuffle</button><button id="mclose">Close</button></div><div id="mgrid"></div></div></div>
+<input id="dirIn" type="file" webkitdirectory multiple hidden><input id="ydkIn" type="file" accept=".ydk,.cydk" multiple hidden>
+<script>
+// ---- YGOPRODeck data: API for card info, images.ygoprodeck.com for pictures (both cached locally after first use) ----
+const API='https://db.ygoprodeck.com/api/v7/',IMGBASE='https://images.ygoprodeck.com/images/cards/';
+const svg=x=>'data:image/svg+xml;utf8,'+encodeURIComponent(x);
+const DEF_COVER=svg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 59 86"><defs><radialGradient id="g" cx=".5" cy=".5" r=".6"><stop offset="0" stop-color="#8a4b1c"/><stop offset="1" stop-color="#3a1a08"/></radialGradient></defs><rect width="59" height="86" rx="2" fill="#1b0f08"/><rect x="3" y="3" width="53" height="80" rx="1.5" fill="url(#g)" stroke="#c98a3c" stroke-width="1"/><ellipse cx="29.5" cy="43" rx="17" ry="25" fill="none" stroke="#e5b25c" stroke-width="1.2"/><ellipse cx="29.5" cy="43" rx="11" ry="17" fill="#2a1206" stroke="#e5b25c" stroke-width=".8"/><circle cx="29.5" cy="43" r="5" fill="#c98a3c"/></svg>');
+const DEF_TOKEN=svg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 59 86"><rect width="59" height="86" rx="2" fill="#4b5668"/><rect x="4" y="4" width="51" height="78" rx="1.5" fill="#6d7a8f" stroke="#c9d2e0" stroke-width="1"/><circle cx="29.5" cy="40" r="15" fill="#4b5668" stroke="#c9d2e0" stroke-width="1.2"/><text x="29.5" y="44" font-family="sans-serif" font-size="9" font-weight="700" fill="#e8edf5" text-anchor="middle">TOKEN</text></svg>');
+let COVERS=[DEF_COVER],TOKENS=[DEF_TOKEN];
+
+const $=id=>document.getElementById(id);
+const M=[1,2,3,4,5].map(i=>'m'+i),ST=[1,2,3,4,5].map(i=>'s'+i);
+const ZONES=['hand','deck','extra','gy','ban','fs','e1','e2',...M,...ST];
+const LABEL={deck:'Deck',extra:'Extra Deck',gy:'GY',ban:'Banished',fs:'Field',e1:'EMZ',e2:'EMZ'};
+const POS={ban:[1,7],e1:[1,3],e2:[1,5],fs:[2,1],gy:[2,7],extra:[3,1],deck:[3,7]};
+M.forEach((z,i)=>POS[z]=[2,i+2]);ST.forEach((z,i)=>POS[z]=[3,i+2]);
+const FIELD=z=>/^(m\d|s\d|fs|e\d)$/.test(z),PILE=z=>['deck','extra','gy','ban'].includes(z);
+const zn=z=>({hand:'Hand',deck:'Deck',extra:'Extra Deck',gy:'GY',ban:'Banished',fs:'Field Zone',e1:'Extra Monster Zone (L)',e2:'Extra Monster Zone (R)'})[z]||(z[0]==='m'?'Monster Zone ':'Spell/Trap Zone ')+z[1];
+let S,undo=[],redo=[],uidn=0,drag=null,view=null,recOn=false,deckTxt='',DB={},HASDB=false;
+let DECKS=JSON.parse(localStorage.getItem('ygoDecks')||'{}');
+const nodes=new Map(),EL={hand:$('hand')};
+const nm=c=>c.tok?'Token':DB[c.id]&&DB[c.id].n?DB[c.id].n:'#'+c.id;
+function blank(){S={Z:{},C:{},lp:8000,log:[],rec:[]};ZONES.forEach(z=>S.Z[z]=[])}
+blank();
+function L(t){S.log.push(t);if(recOn)S.rec.push(t)}
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('show'),1800)}
+
+// ---- zones & drag/drop ----
+ZONES.filter(z=>z!=='hand').forEach(z=>{const d=document.createElement('div');d.className='zone'+(z[0]==='m'?' mz':'');d.dataset.l=LABEL[z]||'';
+  d.style.gridArea=POS[z][0]+'/'+POS[z][1];$('field').append(d);EL[z]=d});
+ZONES.forEach(z=>{const el=EL[z];
+  el.ondragover=e=>{if(drag){e.preventDefault();el.classList.add('over')}};
+  el.ondragleave=e=>{if(!el.contains(e.relatedTarget))el.classList.remove('over')};
+  el.ondrop=e=>{e.preventDefault();el.classList.remove('over');if(!drag)return;const d=drag;
+    if(d.t==='card'){drag=null;cleanup();act(()=>move(d.u,z,{set:e.shiftKey}))}
+    else{const tg=e.target.closest&&e.target.closest('.card'),u=tg?+tg.dataset.u:(FIELD(z)&&S.Z[z][0]);const k=S.C[u];
+      if(k&&FIELD(k.z)){d.done=true;if(d.from!==u)act(()=>{if(d.from!=null)addCt(S.C[d.from],-1);addCt(k,1)})}}};
+});
+document.addEventListener('dragover',e=>{if(drag)e.preventDefault()});
+document.addEventListener('drop',e=>{if(drag)e.preventDefault()});
+function cleanup(){document.body.classList.remove('dragging');$('modal').classList.remove('ghost')}
+document.addEventListener('dragend',()=>{const d=drag;drag=null;cleanup();if(d&&d.t==='ctr'&&!d.done&&d.from!=null)act(()=>addCt(S.C[d.from],-1))});
+$('bCt').ondragstart=e=>{e.dataTransfer.setData('text','ctr');drag={t:'ctr',from:null};document.body.classList.add('dragging')};
+function addCt(c,n){if(!c)return;c.ct=Math.max(0,(c.ct||0)+n);L((n>0?'Add counter to ':'Remove counter from ')+nm(c)+' (now '+c.ct+')')}
+
+// ---- images: fetched from YGOPRODeck once, stored in IndexedDB, then served from the local copy ----
+const IMGURL={};  // id -> blob: URL (this session)
+const IQ=[],IPEND={};let iBusy=0,iLast=0,iDirect=false;
+function loadImg(id){
+  id=String(id);
+  if(CIMG[id])return Promise.resolve(CIMG[id]);
+  if(IMGURL[id])return Promise.resolve(IMGURL[id]);
+  if(/^\d+$/.test(id)===false)return Promise.resolve(null);
+  return IPEND[id]||(IPEND[id]=new Promise(ok=>{IQ.push({id,ok});pump()}));
+}
+function pump(){
+  while(iBusy<3&&IQ.length){
+    const j=IQ.shift();iBusy++;
+    const wait=Math.max(0,iLast+90-Date.now());iLast=Date.now()+wait;   // ≤ ~11 requests/s (API limit is 20/s)
+    setTimeout(async()=>{
+      let u=null;
+      try{
+        let b=null;try{b=await idbGet('img:'+j.id)}catch(_){}
+        if(!b){
+          if(iDirect)u=IMGBASE+j.id+'.jpg';
+          else{
+            const r=await fetch(IMGBASE+j.id+'.jpg');
+            if(!r.ok)throw new Error('HTTP '+r.status);
+            b=await r.blob();try{await idbSet('img:'+j.id,b)}catch(_){}
+          }
+        }
+        if(b)u=IMGURL[j.id]=URL.createObjectURL(b);
+      }catch(e){
+        if(!/HTTP 4/.test(String(e.message))){  // network/CORS problem: show the picture straight from the site (not cached)
+          if(!iDirect){iDirect=true;toast('Could not cache pictures in the browser; showing them straight from YGOPRODeck instead.')}
+          u=IMGBASE+j.id+'.jpg';
+        }
+      }
+      iBusy--;delete IPEND[j.id];j.ok(u);pump();
+    },wait);
+  }
+}
+function setImg(img,srcs,card){let i=0;img.dataset.req='';img.onerror=()=>{if(++i<srcs.length)img.src=srcs[i];else{img.onerror=null;card.classList.add('miss');card.dataset.m=1}};img.src=srcs[0]}
+function setFace(img,id,card,done){
+  const tag=img.dataset.req=String(Math.random());img.onerror=null;
+  const fin=u=>{if(img.dataset.req!==tag)return;
+    if(u){img.style.visibility='';img.onerror=()=>{img.onerror=null;card&&(card.classList.add('miss'),card.dataset.m=1)};img.src=u}
+    else{img.removeAttribute('src');if(card){card.classList.add('miss');card.dataset.m=1}else img.style.visibility='hidden'}};
+  const u=CIMG[id]||IMGURL[id];if(u)return fin(u);
+  loadImg(id).then(fin);
+}
+function precache(txt){const d=parse(txt||'');[...d.main,...d.extra,...d.side].forEach(id=>{if(/^\d+$/.test(String(id)))loadImg(id)})}
+
+// ---- state ops ----
+function act(fn){const b=JSON.stringify(S);fn();if(JSON.stringify(S)!==b){undo.push(b);if(undo.length>200)undo.shift();redo=[]}render()}
+function move(u,to,o={}){
+  const c=S.C[u];if(!c||c.z===to)return;const from=c.z;
+  if(FIELD(to)&&S.Z[to].length){toast('That zone is occupied.');return}
+  S.Z[from]=S.Z[from].filter(x=>x!==u);
+  if(c.tok&&!FIELD(to)){delete S.C[u];L('Token removed from '+zn(from));return}
+  c.z=to;c.def=false;c.up=true;if(!FIELD(to))c.ct=0;
+  if(to==='deck'||to==='extra')c.up=false;
+  if(/^(m|e)\d$/.test(to)&&o.set){c.up=false;c.def=true}else if(/^(s\d|fs)$/.test(to)&&o.set)c.up=false;
+  const a=S.Z[to];(to==='deck'||to==='extra')&&o.pos!=='bottom'?a.unshift(u):a.push(u);
+  L(from==='deck'&&to==='hand'?'Draw '+nm(c):from==='deck'&&to==='gy'?'Mill '+nm(c):nm(c)+': '+zn(from)+' → '+zn(to)+(o.set?' (face-down'+(c.def?' DEF':'')+')':''));
+}
+function draw(n){if(!S.Z.deck.length)toast('Deck is empty.');for(let i=0;i<n&&S.Z.deck.length;i++)move(S.Z.deck[0],'hand')}
+function shuffle(){const a=S.Z.deck;for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}}
+const free=l=>l.find(z=>!S.Z[z].length);
+function summon(c){const z=free(M)||free(['e1','e2']);if(!z)return toast('No free monster zone.');move(c.u,z)}
+function flipDef(c){c.def=!c.def;L('Switch '+nm(c)+' to '+(c.def?'DEF':'ATK')+' position')}
+function flipUp(c){c.up=!c.up;L('Flip '+nm(c)+(c.up?' face-up':' face-down'))}
+
+// ---- card nodes (cached so rendering never recreates images) ----
+function node(c,v){
+  const key=(v?'v':'')+c.u;let d=nodes.get(key);
+  if(!d){const u=c.u;d=document.createElement('div');d.dataset.u=u;d.innerHTML='<img draggable="false" decoding="sync"><span class="ct" draggable="true"></span>';
+    d.draggable=true;
+    d.ondragstart=e=>{drag={t:'card',u};e.dataTransfer.setData('text','card');document.body.classList.add('dragging');if(v)setTimeout(()=>$('modal').classList.add('ghost'),0)};
+    d.lastChild.ondragstart=e=>{e.stopPropagation();drag={t:'ctr',from:u};e.dataTransfer.setData('text','ctr');document.body.classList.add('dragging')};
+    d.onmouseenter=()=>{const k=S.C[u];k&&show(k)};
+    d.oncontextmenu=e=>{const k=S.C[u];if(!v&&k&&FIELD(k.z)){e.preventDefault();e.stopPropagation();menu(e,k)}};
+    d.ondblclick=e=>{e.stopPropagation();const k=S.C[u];if(!k)return;
+      if(v)act(()=>move(u,'hand'));else if(/^(m|e)\d$/.test(k.z))act(()=>flipDef(k))};
+    nodes.set(key,d)}
+  const up=v||c.up,k=(up?'f':'b')+(c.tok?'t':c.id);
+  d.className='card'+(c.def&&!v?' def':'')+(!up?' fd':'')+(d.dataset.m?' miss':'');
+  if(d.dataset.k!==k){d.dataset.k=k;delete d.dataset.m;d.classList.remove('miss');d.dataset.id=up?(c.tok?'TOKEN':c.id):'';if(up&&!c.tok)setFace(d.firstChild,c.id,d);else setImg(d.firstChild,up?TOKENS:COVERS,d)}
+  d.lastChild.textContent=c.ct?'✦'+c.ct:'';
+  return d;
+}
+function sync(el,want,n){
+  const cur=[...el.children].filter(x=>!x.classList.contains('badge'));
+  el.classList.toggle('has',want.length>0);
+  if(cur.length!==want.length||cur.some((x,i)=>x!==want[i]))el.replaceChildren(...want);
+  let b=el.querySelector('.badge');
+  if(n){if(!b){b=document.createElement('div');b.className='badge';el.append(b)}b.textContent=n}else if(b)b.remove();
+}
+function list(el,arr){el.replaceChildren(...arr.map((t,i)=>{const d=document.createElement('div');d.textContent=(i+1)+'. '+t;return d}));el.scrollTop=el.scrollHeight}
+function render(){
+  for(const z of ZONES){const a=S.Z[z];
+    const want=z==='hand'?a.map(u=>node(S.C[u])):a.length?[node(S.C[(z==='gy'||z==='ban')?a[a.length-1]:a[0]])]:[];
+    sync(EL[z],want,PILE(z)?a.length:0)}
+  if(document.activeElement!==$('lp'))$('lp').value=S.lp;
+  list($('lgList'),S.log);list($('rcList'),S.rec);
+  $('rcRec').classList.toggle('on',recOn);$('rcRec').textContent=recOn?'■ Stop recording':'● Record';
+  document.querySelector('[data-t=rec]').textContent=recOn?'● Recording':'Record combo';
+  $('bUndo').disabled=!undo.length;$('bRedo').disabled=!redo.length;
+  if(view)renderView();
+}
+
+// ---- card info (YGOPro style) ----
+const RACE=['Warrior','Spellcaster','Fairy','Fiend','Zombie','Machine','Aqua','Pyro','Rock','Winged Beast','Plant','Insect','Thunder','Dragon','Beast','Beast-Warrior','Dinosaur','Fish','Sea Serpent','Reptile','Psychic','Divine-Beast','Creator God','Wyrm','Cyberse','Illusion'];
+const ATTR=['EARTH','WATER','FIRE','WIND','LIGHT','DARK','DIVINE'];
+const TF=[[0x40,'Fusion'],[0x80,'Ritual'],[0x2000,'Synchro'],[0x800000,'Xyz'],[0x1000000,'Pendulum'],[0x4000000,'Link'],[0x200,'Spirit'],[0x400,'Union'],[0x800,'Gemini'],[0x400000,'Toon'],[0x200000,'Flip'],[0x1000,'Tuner'],[0x10,'Normal'],[0x20,'Effect'],[0x4000,'Token']];
+const SP=[[0x10000,'Quick-Play'],[0x20000,'Continuous'],[0x40000,'Equip'],[0x80000,'Field'],[0x100000,'Counter'],[0x80,'Ritual']];
+const bi=(a,v)=>a[31-Math.clz32(v)],q=v=>v<0?'?':v;
+function show(c){
+  const id=c.tok?0:c.id;if(show.k===id)return;show.k=id;
+  const im=$('cimg');im.style.visibility='';
+  if(c.tok){im.onerror=null;im.src=TOKENS[0]}else setFace(im,id,null);
+  const d=DB[id];let m='',st='',tx='';
+  $('cname').textContent=c.tok?'Token':d&&d.n?d.n:'#'+id;
+  if(d){const t=d.t;
+    if(t&1){m='[Monster] '+[d.r?bi(RACE,d.r):'',...TF.filter(x=>t&x[0]).map(x=>x[1])].filter(Boolean).join(' / ');
+      const lk=t&0x4000000,lv=d.l&255;
+      st=(d.at?bi(ATTR,d.at)+'   ':'')+(lk?'LINK-'+lv:t&0x800000?'☆'+lv:'★'+lv)+(t&0x1000000?'   Scale '+(d.l>>24&255)+'/'+(d.l>>16&255):'')+'\nATK/'+q(d.a)+(lk?'':'   DEF/'+q(d.df))}
+    else m='['+(t&2?'Spell':'Trap')+'] '+(SP.filter(x=>t&x[0]).map(x=>x[1]).join(' / ')||'Normal');
+    tx=d.d.replace(/\r\n?/g,'\n');if(t&1)tx=tx.replace(/(?<![.]{2}|e\.g|i\.e|\b[A-Z])\.([)"”»]*)[ \t]+(?=\S)/g,'.$1\n\n')}
+  else if(!c.tok){m='ID '+id;tx=HASDB?'Card #'+id+' is not in the card data. If it is a brand-new card, use ⚙ Settings → Check for update.':'No card data yet. Click “Card data” to download it from YGOPRODeck.'}
+  $('cmeta').textContent=m;$('cstat').textContent=st;$('cdesc').textContent=tx;
+}
+
+// ---- right-click menu (field cards only) ----
+function menu(e,c){
+  const m=$('menu'),it=[[c.up?'Set face-down':'Flip face-up',()=>flipUp(c)]];
+  if(/^(m|e)\d$/.test(c.z))it.push(['Switch to '+(c.def?'ATK':'DEF'),()=>flipDef(c)]);
+  it.push(['Set counters…',()=>{const n=prompt('Number of counters on '+nm(c)+':',c.ct||0);if(n===null)return;const v=Math.max(0,parseInt(n)||0);if(v!==(c.ct||0)){c.ct=v;L('Set counters on '+nm(c)+' to '+v)}}]);
+  m.replaceChildren(...it.map(([t,f])=>{const d=document.createElement('div');d.textContent=t;d.onclick=ev=>{ev.stopPropagation();m.style.display='none';act(f)};return d}));
+  m.style.display='block';m.style.left=Math.min(e.clientX,innerWidth-m.offsetWidth-6)+'px';m.style.top=Math.min(e.clientY,innerHeight-m.offsetHeight-6)+'px';
+}
+document.addEventListener('click',()=>$('menu').style.display='none');
+document.addEventListener('contextmenu',e=>{if(!e.target.closest('.card'))$('menu').style.display='none'});
+EL.deck.onclick=()=>act(()=>draw(1));
+EL.deck.oncontextmenu=e=>{e.preventDefault();openView('deck')};
+['gy','ban','extra'].forEach(z=>EL[z].onclick=()=>openView(z));
+
+// ---- pile viewer ----
+function openView(z){view=z;$('modal').style.display='flex';document.querySelector('[data-t=info]').click();renderView()}
+function renderView(){
+  $('modal').classList.remove('ghost');
+  const a=S.Z[view].slice();if(view==='gy'||view==='ban')a.reverse();
+  $('mtitle').textContent=(LABEL[view]||view)+' ('+a.length+') — drag cards out, or double-click to add to hand';
+  $('mshuf').style.display=view==='deck'?'':'none';
+  $('mgrid').replaceChildren(...a.map(u=>node(S.C[u],true)));
+}
+$('mclose').onclick=()=>{view=null;$('modal').style.display='none'};
+$('modal').onclick=e=>{if(e.target===$('modal'))$('mclose').onclick()};
+$('mshuf').onclick=()=>act(()=>{shuffle();L('Shuffle deck')});
+
+// ---- decks ----
+function ydke(t){  // ydke://<main>!<extra>!<side>!  (base64 of little-endian 32-bit passcodes)
+  const p=t.trim().replace(/^ydke:\/\//i,'').split('!'),dec=b=>{if(!b)return[];const r=atob(b),u=new Uint8Array(r.length);for(let i=0;i<r.length;i++)u[i]=r.charCodeAt(i);return[...new Uint32Array(u.buffer,0,u.length>>2)]};
+  return '#main\n'+dec(p[0]).join('\n')+'\n#extra\n'+dec(p[1]).join('\n')+'\n!side\n'+dec(p[2]).join('\n')+'\n'}
+function parse(t){let sec='main',o={main:[],extra:[],side:[]};if(/^\s*ydke:\/\//i.test(t))try{t=ydke(t)}catch(_){}
+  for(const l of t.split(/\r?\n/)){const s=l.trim();
+    if(s==='#main')sec='main';else if(s==='#extra')sec='extra';else if(s==='!side')sec='side';
+    else if(/^[\w.\-]+$/.test(s)&&o[sec])o[sec].push(/^\d+$/.test(s)?+s:s)}
+  return o}
+function newGame(){
+  if(!deckTxt)return toast('Pick a deck first.');
+  const d=parse(deckTxt);blank();undo=[];redo=[];
+  const add=(id,z)=>{const u=++uidn;S.C[u]={u,id,z,up:false,def:false,ct:0};S.Z[z].push(u)};
+  d.main.forEach(id=>add(id,'deck'));d.extra.forEach(id=>add(id,'extra'));precache(deckTxt);
+  shuffle();draw(5);S.log=[];S.rec=[];
+  L('Opening hand: '+S.Z.hand.map(u=>nm(S.C[u])).join(', '));render();
+}
+function fillSel(sel){const s=$('deckSel');s.replaceChildren(new Option('Select deck…',''),...Object.keys(DECKS).sort((a,b)=>a.localeCompare(b)).map(n=>new Option(n,n)));s.value=sel||''}
+function startDeck(n){if(!DECKS[n])return;deckTxt=DECKS[n];localStorage.setItem('ygoLast',n);newGame()}
+$('deckSel').onchange=e=>startDeck(e.target.value);
+addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('Files'))e.preventDefault()});
+addEventListener('drop',async e=>{const fs=[...e.dataTransfer.files].filter(f=>/\.c?ydk$/i.test(f.name));if(!fs.length)return;e.preventDefault();await addDeckFiles(fs)});
+async function addDeckFiles(fs){
+  let last='';for(const f of fs){const n=f.name.replace(/\.c?ydk$/i,'');DECKS[n]=await f.text();last=n}
+  try{localStorage.setItem('ygoDecks',JSON.stringify(DECKS))}catch(_){toast('Deck list is too large to remember.')}
+  fillSel(last);startDeck(last);if(fs.length>1)toast('Added '+fs.length+' decks.')}
+$('bAdd').onclick=()=>$('ydkIn').click();
+$('ydkIn').onchange=async e=>{const fs=[...e.target.files];e.target.value='';if(fs.length)await addDeckFiles(fs)};
+$('bPaste').onclick=async()=>{
+  let t='';try{t=await navigator.clipboard.readText()}catch(_){t=prompt('Paste the .ydk text or ydke:// link here:')||''}
+  if(!t.trim())return toast('Clipboard is empty.');
+  if(/^\s*ydke:\/\//i.test(t))try{t=ydke(t)}catch(_){return toast('That ydke:// link could not be read.')}
+  if(!parse(t).main.length)return toast('No card IDs found in the clipboard.');
+  const n=(prompt('Name for this deck:','Pasted deck')||'').trim().replace(/[\\/:*?"<>|]/g,'_');if(!n)return;
+  DECKS[n]=t;try{localStorage.setItem('ygoDecks',JSON.stringify(DECKS))}catch(_){}fillSel(n);startDeck(n)};
+
+// ---- card database: YGOPRODeck API (cardinfo.php), converted to the YGOPro bit-flag format and kept in IndexedDB ----
+let _db=null;const idb=()=>_db||(_db=new Promise((ok,no)=>{const r=indexedDB.open('ygoplaytest',1);r.onupgradeneeded=()=>r.result.createObjectStore('k');r.onsuccess=()=>ok(r.result);r.onerror=()=>{_db=null;no(r.error)}}));
+const idbGet=async k=>{const d=await idb();return new Promise(ok=>{const g=d.transaction('k').objectStore('k').get(k);g.onsuccess=()=>ok(g.result);g.onerror=()=>ok()})};
+const idbSet=async(k,v)=>{const d=await idb();return new Promise((ok,no)=>{const t=d.transaction('k','readwrite');t.objectStore('k').put(v,k);t.oncomplete=ok;t.onerror=()=>no(t.error)})};
+const TFLAG={Fusion:0x40,Ritual:0x80,Synchro:0x2000,XYZ:0x800000,Pendulum:0x1000000,Link:0x4000000,Spirit:0x200,Union:0x400,Gemini:0x800,Tuner:0x1000,Toon:0x400000,Flip:0x200000,Normal:0x10,Effect:0x20,Token:0x4000};
+const SPFLAG={'Quick-Play':0x10000,Continuous:0x20000,Equip:0x40000,Field:0x80000,Counter:0x100000,Ritual:0x80};
+const norm=x=>String(x||'').toLowerCase().replace(/[^a-z]/g,'');
+const RACEI={},ATTRI={};RACE.forEach((n,i)=>RACEI[norm(n)]=2**i);ATTR.forEach((n,i)=>ATTRI[norm(n)]=2**i);
+function convert(list){
+  const out={};let cnt=0;
+  for(const c of list){
+    const ty=String(c.type||'');if(/skill/i.test(ty))continue;
+    let t=0,a=0,df=0,l=0,r=0,at=0;
+    if(/spell/i.test(ty)){t=2|(SPFLAG[c.race]||0)}
+    else if(/trap/i.test(ty)){t=4|(SPFLAG[c.race]||0)}
+    else{
+      t=1;for(const w of ty.split(/\s+/))if(TFLAG[w])t|=TFLAG[w];
+      if(/token/i.test(ty))t|=0x4000;
+      a=c.atk==null?-1:c.atk;df=(t&0x4000000)?0:(c.def==null?-1:c.def);
+      l=(t&0x4000000?c.linkval:c.level)||0;l&=255;
+      if(t&0x1000000){const sc=c.scale||0;l+=sc*65536+sc*16777216}
+      r=RACEI[norm(c.race)]||0;at=ATTRI[norm(c.attribute)]||0;
+    }
+    const e={n:c.name||'',d:c.desc||'',t,a,df,l,r,at,src:['YGOPRODeck']};
+    out[c.id]=e;cnt++;
+    (c.card_images||[]).forEach(im=>{if(im.id!=null&&!out[im.id])out[im.id]=e});   // alternate-art IDs point at the same card
+  }
+  return{cards:out,count:cnt};
+}
+let DBINFO=[];
+function renderDbInfo(){$('dbList').replaceChildren(...(DBINFO.length?DBINFO:[{n:'None downloaded yet'}]).map(x=>{const d=document.createElement('div');d.textContent=x.err?'✗ '+x.n+' — '+x.err:x.c==null?x.n:'✓ '+x.n+' — '+x.c+' cards';return d}))}
+function useDb(rec){
+  DB=rec.cards;DBINFO=[{n:'YGOPRODeck API v'+(rec.ver||'?')+(rec.ts?' (downloaded '+new Date(rec.ts).toLocaleDateString()+')':''),c:rec.count}];
+  HASDB=Object.keys(DB).length>0;mergeCustom();show.k=null;renderDbInfo();nodes.forEach(d=>delete d.dataset.k);render();updData()}
+async function apiJson(url){const r=await fetch(url);if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}
+async function downloadDb(force){
+  const bt=$('bData');bt.disabled=true;bt.textContent='Downloading…';
+  try{
+    let ver='';try{const v=await apiJson(API+'checkDBVer.php');ver=(v[0]||v).database_version||''}catch(_){}
+    const cur=await idbGet('ygodb');
+    if(!force&&cur&&ver&&cur.ver===ver){toast('Card data is already up to date (v'+ver+').');return}
+    toast('Downloading card data… (one request, a few MB)');
+    const j=await apiJson(API+'cardinfo.php');
+    const rec={...convert(j.data||[]),ver,ts:Date.now()};
+    if(!rec.count)throw new Error('empty response');
+    try{await idbSet('ygodb',rec)}catch(_){toast('Loaded, but the browser would not store it.')}
+    useDb(rec);toast('Card data loaded: '+rec.count+' cards.');
+  }catch(e){
+    console.error(e);DBINFO=[{n:'YGOPRODeck download',err:String(e.message||e)}];renderDbInfo();
+    toast('Could not download card data ('+(e.message||e)+'). Check your connection and try again.');
+  }finally{bt.disabled=false;updData()}
+}
+function updData(){$('bData').textContent=HASDB?'Update card data':'Download card data'}
+$('bData').onclick=()=>downloadDb(!HASDB);
+$('dbUpd').onclick=()=>downloadDb(false);$('dbForce').onclick=()=>downloadDb(true);
+$('lkId').oninput=()=>{const v=$('lkId').value,e=DB[v];$('lkOut').textContent=!v?'':e?(e.n||'(no name)')+' — in '+e.src.join(', ')+'; type '+e.t+', level '+(e.l&255)+', ATK '+e.a+', DEF '+e.df:'Not found in the card data.'};
+
+// ---- deck folder (optional): scans for .ydk/.cydk files and holds playtester_files/ for custom cards ----
+let rootH=null;
+async function ingest(decks){
+  if(!decks.length){toast('No .ydk files found there.');return}
+  const cur=$('deckSel').value;DECKS={};decks.forEach(d=>DECKS[d.name]=d.text);for(const k in CDECKS)if(!(k in DECKS))DECKS[k]=CDECKS[k];
+  try{localStorage.setItem('ygoDecks',JSON.stringify(DECKS))}catch(_){toast('Deck list is too large to remember.')}
+  fillSel(DECKS[cur]?cur:'');toast('Loaded '+decks.length+' decks.');render()}
+async function process(entries){
+  const used={},decks=[];
+  for(const e of entries.filter(x=>/\.c?ydk$/i.test(x.path))){
+    let n=e.path.replace(/\.c?ydk$/i,'').replace(/^playtester_files\/decks\//i,'★ ');
+    if(!/^★ /.test(n)){n=n.split('/').pop();if(used[n])n=e.path.replace(/\.c?ydk$/i,'');}
+    used[n]=1;decks.push({name:n,text:await e.file.text()})}
+  await ingest(decks);
+  await loadPf(entries);
+}
+async function collect(h){
+  const out=[];
+  const walk=async(d,pre,depth)=>{for await(const[n,e]of d.entries()){
+    if(e.kind==='file'){if(/\.c?ydk$/i.test(n)||(/^playtester_files\//i.test(pre)&&/\.(json|jpe?g|png|webp|gif)$/i.test(n)))out.push({path:pre+n,file:await e.getFile()})}
+    else if(depth<4&&(!/^(\.git|node_modules|scripts?|pics?)$/i.test(n)||/^playtester_files\//i.test(pre)))await walk(e,pre+n+'/',depth+1)}};
+  await walk(h,'',0);return out;
+}
+async function rescan(h){await process(await collect(h));updLoad()}
+async function pick(){
+  if(window.showDirectoryPicker){
+    try{rootH=await showDirectoryPicker({id:'ygodecks',mode:'read'});try{await idbSet('root',rootH)}catch(_){}await rescan(rootH)}
+    catch(e){if(e.name!=='AbortError')toast('Could not open that folder.')}
+  }else $('dirIn').click();
+}
+async function updLoad(){
+  const b=$('bLoad'),p=$('bPick');
+  if(rootH){let g=false;try{g=await rootH.queryPermission({mode:'read'})==='granted'}catch(_){}b.textContent=g?'Refresh folder':'Reconnect folder';p.hidden=false}
+  else{b.textContent='Load folder…';p.hidden=true}
+}
+$('bLoad').onclick=async()=>{
+  if(rootH){try{let g=await rootH.queryPermission({mode:'read'});if(g!=='granted')g=await rootH.requestPermission({mode:'read'});if(g==='granted')return rescan(rootH)}catch(_){}}
+  pick();
+};
+$('bPick').onclick=pick;
+$('dirIn').onchange=async e=>{  // fallback for browsers without the folder-access API
+  const fs=[...e.target.files].filter(f=>/\.c?ydk$/i.test(f.name)||/^playtester_files$/i.test(f.webkitRelativePath.split('/')[1]));e.target.value='';
+  await process(fs.map(f=>({path:f.webkitRelativePath.split('/').slice(1).join('/'),file:f})));
+};
+
+// ---- settings ----
+const SET=JSON.parse(localStorage.getItem('ygoSet')||'{}');let bgURL='';
+function applySet(){const f=SET.fs||13,c=SET.cfs||13,r=document.documentElement.style;
+  r.setProperty('--fs',f+'px');r.setProperty('--cfs',c+'px');
+  $('fsR').value=f;$('cfsR').value=c;$('fsv').textContent=f+'px';$('cfsv').textContent=c+'px';
+  const fl=$('field');fl.classList.toggle('zs-sq',SET.zone==='sq');fl.classList.toggle('zs-both',SET.zone==='both');$('zoneSel').value=SET.zone||'card';
+  document.documentElement.dataset.theme=SET.theme||'dark';$('themeSel').value=SET.theme||'dark';
+  const dm=SET.dim??40;r.setProperty('--dim',bgURL?dm/100:0);r.setProperty('--bgimg',bgURL?'url("'+bgURL+'")':'none');$('dimR').value=dm;
+  try{localStorage.setItem('ygoSet',JSON.stringify(SET))}catch(_){}}
+$('fsR').oninput=e=>{SET.fs=+e.target.value;applySet()};
+$('cfsR').oninput=e=>{SET.cfs=+e.target.value;applySet()};
+$('setReset').onclick=()=>{delete SET.fs;delete SET.cfs;applySet()};
+function setBg(b){if(bgURL)URL.revokeObjectURL(bgURL);bgURL=b?URL.createObjectURL(b):'';applySet()}
+$('bgPick').onclick=()=>$('bgIn').click();
+$('bgIn').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{await idbSet('bg',f)}catch(_){toast('Could not remember the image.')}setBg(f)};
+$('bgClear').onclick=async()=>{try{await idbSet('bg',null)}catch(_){}setBg(null)};
+function setCover(b){if(setCover.u)URL.revokeObjectURL(setCover.u);setCover.u=b?URL.createObjectURL(b):'';COVERS=[setCover.u||DEF_COVER];nodes.forEach(d=>delete d.dataset.k);render()}
+$('cvPick').onclick=()=>$('cvIn').click();
+$('cvIn').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{await idbSet('cover',f)}catch(_){toast('Could not remember the image.')}setCover(f)};
+$('cvClear').onclick=async()=>{try{await idbSet('cover',null)}catch(_){}setCover(null)};
+$('zoneSel').onchange=e=>{SET.zone=e.target.value;applySet()};
+$('themeSel').onchange=e=>{SET.theme=e.target.value;applySet()};
+$('dimR').oninput=e=>{SET.dim=+e.target.value;applySet()};
+applySet();
+
+// ---- toolbar ----
+$('bNew').onclick=newGame;
+$('bDraw').onclick=()=>act(()=>draw(1));
+$('bShuf').onclick=()=>act(()=>{shuffle();L('Shuffle deck')});
+$('bMill').onclick=()=>act(()=>{if(S.Z.deck.length)move(S.Z.deck[0],'gy');else toast('Deck is empty.')});
+$('bUndo').onclick=()=>{if(undo.length){redo.push(JSON.stringify(S));S=JSON.parse(undo.pop());render()}};
+$('bRedo').onclick=()=>{if(redo.length){undo.push(JSON.stringify(S));S=JSON.parse(redo.pop());render()}};
+function fx(h){const f=$('fx');f.innerHTML=h;f.className='show';clearTimeout(fx.t);fx.t=setTimeout(()=>f.className='',1500)}
+$('bDice').onclick=()=>{const n=1+Math.random()*6|0;act(()=>L('Dice roll: '+n));fx('<div class="die">'+n+'</div>')};
+$('bCoin').onclick=()=>{const r=Math.random()<.5?'Heads':'Tails';act(()=>L('Coin toss: '+r));fx('<div class="coin">'+r.toUpperCase()+'</div>')};
+$('bTok').onclick=()=>act(()=>{const z=free(M)||free(['e1','e2']);if(!z)return toast('No free monster zone.');
+  const u=++uidn;S.C[u]={u,id:0,tok:1,z,up:true,def:false,ct:0};S.Z[z].push(u);L('Summon Token → '+zn(z))});
+const amt=()=>Math.abs(+$('amt').value)||0;
+function setLp(v){v=Math.max(0,Math.round(v));if(v===S.lp)return;act(()=>{L('LP '+S.lp+' → '+v);S.lp=v})}
+$('lpm').onclick=()=>setLp(S.lp-amt());$('lpp').onclick=()=>setLp(S.lp+amt());$('lph').onclick=()=>setLp(S.lp/2);
+$('lp').onchange=()=>setLp(+$('lp').value||0);
+
+// ---- tabs, logs ----
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('.pane').forEach(p=>p.hidden=p.id!=='p-'+b.dataset.t)});
+const txt=a=>a.map((t,i)=>(i+1)+'. '+t).join('\n');
+async function copy(a){try{await navigator.clipboard.writeText(txt(a))}catch(_){const t=document.createElement('textarea');t.value=txt(a);document.body.append(t);t.select();document.execCommand('copy');t.remove()}toast('Copied.')}
+function save(a,n){const l=document.createElement('a');l.href=URL.createObjectURL(new Blob([txt(a)],{type:'text/plain'}));l.download=n;l.click();setTimeout(()=>URL.revokeObjectURL(l.href),1000)}
+$('lgCopy').onclick=()=>copy(S.log);$('lgSave').onclick=()=>save(S.log,'playtest-log.txt');
+$('rcCopy').onclick=()=>copy(S.rec);$('rcSave').onclick=()=>save(S.rec,'combo.txt');
+$('rcRec').onclick=()=>{recOn=!recOn;render()};
+$('rcClear').onclick=()=>{S.rec=[];render()};
+addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;const k=e.key.toLowerCase();
+  if(k==='escape')$('mclose').onclick();else if(k==='d'&&!e.ctrlKey)$('bDraw').click();
+  else if((e.ctrlKey||e.metaKey)&&k==='z'){e.preventDefault();(e.shiftKey?$('bRedo'):$('bUndo')).click()}
+  else if((e.ctrlKey||e.metaKey)&&k==='y'){e.preventDefault();$('bRedo').click()}});
+
+// ---- custom cards (stored in playtester_files/, never read by the game) ----
+let CUSTOM={},CIMG={},IMGS={},cIds=[],curId=null,CDECKS=JSON.parse(localStorage.getItem('ygoCDecks')||'{}');
+const stem=n=>n.replace(/\.[^.]+$/,''),pa=v=>/^\s*\?\s*$/.test(v)?-2:(parseInt(v)||0);
+const SUBS={2:[['Normal',0],['Quick-Play',0x10000],['Continuous',0x20000],['Equip',0x40000],['Field',0x80000],['Ritual',0x80]],4:[['Normal',0],['Continuous',0x20000],['Counter',0x100000]]};
+function mergeCustom(){
+  cIds.forEach(i=>{if(DB[i]&&DB[i].custom)delete DB[i]});cIds=Object.keys(CUSTOM);
+  cIds.forEach(i=>DB[i]={...CUSTOM[i],src:['custom'],custom:1});if(cIds.length)HASDB=true}
+function refreshCards(){nodes.forEach(d=>delete d.dataset.k);show.k=null;renderCList();render()}
+async function loadPf(entries){
+  const cj=entries.find(e=>/^playtester_files\/cards\.json$/i.test(e.path)),im=entries.filter(e=>/^playtester_files\/pics\//i.test(e.path));
+  if(!cj&&!im.length)return;
+  if(cj){try{CUSTOM=JSON.parse(await cj.file.text())}catch(_){toast('playtester_files/cards.json is not valid JSON.')}}
+  Object.values(CIMG).forEach(u=>URL.revokeObjectURL(u));CIMG={};IMGS={};
+  im.forEach(e=>{const id=stem(e.file.name);IMGS[id]=e.file;CIMG[id]=URL.createObjectURL(e.file)});
+  mergeCustom();try{await idbSet('custom',{cards:CUSTOM,imgs:IMGS})}catch(_){}
+  refreshCards();
+}
+const wr=async(d,n,data)=>{const w=await(await d.getFileHandle(n,{create:true})).createWritable();await w.write(data);await w.close()};
+async function pfDir(){
+  if(!rootH)return null;
+  try{let p=await rootH.queryPermission({mode:'readwrite'});if(p!=='granted')p=await rootH.requestPermission({mode:'readwrite'});
+    return p==='granted'?await rootH.getDirectoryHandle('playtester_files',{create:true}):null}catch(_){return null}
+}
+async function persistCustom(file,removed,id){
+  const d=await pfDir();
+  try{await idbSet('custom',{cards:CUSTOM,imgs:IMGS})}catch(_){}
+  if(!d)return toast(rootH?'Saved in the browser only (no write access to the folder).':'Saved in the browser only (use “Load folder…” to also save files to disk).');
+  try{
+    await wr(d,'cards.json',JSON.stringify(CUSTOM,null,1));
+    const pd=await d.getDirectoryHandle('pics',{create:true});
+    const clr=async i=>{for await(const[n]of pd.entries())if(stem(n)===i)await pd.removeEntry(n)};
+    if(removed)await clr(removed);
+    if(file){await clr(id);await wr(pd,id+'.'+((file.name.match(/\.(\w+)$/)||[,'png'])[1].toLowerCase()),file)}
+    toast('Saved to playtester_files.');
+  }catch(e){toast('Saved in the browser only ('+e.name+').')}
+}
+function kindUI(){const k=+$('cKind').value;$('cMon').hidden=k!==1;$('cStW').hidden=k===1;if(k!==1)$('cSt').replaceChildren(...SUBS[k].map(([n,v])=>new Option(n,v)))}
+function fillForm(id,c){
+  c=c||{n:'',d:'',t:1,a:0,df:0,l:4,r:1,at:16};curId=id||null;
+  $('cId').value=id||'';$('cName').value=c.n;$('cText').value=c.d;$('cImg').value='';
+  const k=c.t&1?1:c.t&2?2:4;$('cKind').value=k;kindUI();
+  if(k===1){$('cRace').value=c.r||1;$('cAttr').value=c.at||16;$('cLv').value=c.l&255;$('cSl').value=c.l>>24&255;$('cSr').value=c.l>>16&255;
+    $('cAtk').value=c.a<0?'?':c.a;$('cDef').value=c.df<0?'?':c.df;
+    document.querySelectorAll('#cTf input').forEach(i=>i.checked=!!(c.t&+i.value))}
+  else{const x=SUBS[k].find(([n,v])=>v&&(c.t&v));$('cSt').value=x?x[1]:0}
+}
+function readForm(){
+  const k=+$('cKind').value;let t=k,a=0,r=0,l=0,at=0,df=0;
+  if(k===1){document.querySelectorAll('#cTf input:checked').forEach(i=>t|=+i.value);
+    r=+$('cRace').value;at=+$('cAttr').value;a=pa($('cAtk').value);df=(t&0x4000000)?0:pa($('cDef').value);
+    l=(+$('cLv').value||0)&255;if(t&0x1000000)l+=(+$('cSr').value||0)*65536+(+$('cSl').value||0)*16777216}
+  else t|=+$('cSt').value;
+  return{n:$('cName').value.trim()||$('cId').value.trim(),d:$('cText').value,t,a,df,l,r,at}}
+function renderCList(){const ids=Object.keys(CUSTOM).sort();
+  $('cList').replaceChildren(...(ids.length?ids:[null]).map(i=>{const d=document.createElement('div');
+    if(i===null)d.textContent='No custom cards yet.';else{d.textContent=i+' — '+CUSTOM[i].n;d.style.cursor='pointer';d.onclick=()=>fillForm(i,CUSTOM[i])}return d}))}
+RACE.forEach((n,i)=>$('cRace').add(new Option(n,2**i)));ATTR.forEach((n,i)=>$('cAttr').add(new Option(n,2**i)));
+$('cTf').replaceChildren(...TF.filter(x=>x[0]!==0x4000).map(([b,n])=>{const l=document.createElement('label');l.innerHTML='<input type="checkbox" value="'+b+'"> '+n;return l}));
+$('cKind').onchange=kindUI;$('cNew').onclick=()=>fillForm('',null);
+$('cSave').onclick=async()=>{
+  const id=$('cId').value.trim();
+  if(!/^[\w-]+$/.test(id))return toast('ID: letters, numbers, _ and - only.');
+  if(/^\d+$/.test(id)&&DB[id]&&!DB[id].custom)return toast('That number belongs to a real card. Use an ID with letters.');
+  const f=$('cImg').files[0];CUSTOM[id]=readForm();
+  if(f){IMGS[id]=f;if(CIMG[id])URL.revokeObjectURL(CIMG[id]);CIMG[id]=URL.createObjectURL(f)}
+  curId=id;const pr=persistCustom(f,null,id);mergeCustom();refreshCards();await pr;
+};
+$('cDel').onclick=async()=>{
+  const id=curId;if(!id||!CUSTOM[id])return toast('Pick a custom card from the list first.');if(!confirm('Delete '+id+'?'))return;
+  delete CUSTOM[id];delete IMGS[id];if(CIMG[id]){URL.revokeObjectURL(CIMG[id]);delete CIMG[id]}
+  const pr=persistCustom(null,id);mergeCustom();fillForm('',null);refreshCards();await pr;
+};
+$('cExp').onclick=()=>{const l=document.createElement('a');l.href=URL.createObjectURL(new Blob([JSON.stringify(CUSTOM,null,1)],{type:'application/json'}));l.download='cards.json';l.click();setTimeout(()=>URL.revokeObjectURL(l.href),1000)};
+$('cdCur').onclick=()=>{$('cdText').value=(deckTxt||'').replace(/\r/g,'')};
+$('cdSave').onclick=async()=>{
+  const name=$('cdName').value.trim().replace(/[\\/:*?"<>|]/g,'_'),text=$('cdText').value;
+  if(!name||!parse(text).main.length)return toast('Give the deck a name and at least one main-deck card.');
+  const dp=pfDir(),key='★ '+name;CDECKS[key]=DECKS[key]=text;
+  try{localStorage.setItem('ygoCDecks',JSON.stringify(CDECKS));localStorage.setItem('ygoDecks',JSON.stringify(DECKS))}catch(_){}
+  fillSel(key);startDeck(key);
+  const d=await dp;if(d){try{await wr(await d.getDirectoryHandle('decks',{create:true}),name+'.cydk',text);toast('Deck saved to playtester_files/decks.')}catch(_){}}
+};
+fillForm('',null);renderCList();
+
+// ---- startup ----
+(async()=>{
+  renderDbInfo();
+  try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(_){}
+  try{const bg=await idbGet('bg');if(bg)setBg(bg)}catch(_){}
+  try{const cv=await idbGet('cover');if(cv)setCover(cv)}catch(_){}
+  idbSet('cdbs2',null).catch(()=>{});idbSet('sig2',null).catch(()=>{});   // old ProjectIgnis database copy is no longer used
+  let rec=null;try{rec=await idbGet('ygodb')}catch(_){}
+  if(rec&&rec.cards)useDb(rec);
+  try{const c=await idbGet('custom');if(c){CUSTOM=c.cards||{};IMGS=c.imgs||{};for(const i in IMGS)CIMG[i]=URL.createObjectURL(IMGS[i]);mergeCustom();renderCList()}}catch(_){}
+  try{rootH=(await idbGet('root'))||null}catch(_){}
+  const last=localStorage.getItem('ygoLast');fillSel(DECKS[last]?last:'');
+  render();if(DECKS[last])startDeck(last);
+  if(rootH){try{if(await rootH.queryPermission({mode:'read'})==='granted')await rescan(rootH)}catch(_){}}
+  updLoad();updData();
+  if(!rec||!rec.cards)downloadDb(true);   // first run: fetch the card data once
+})();
+</script></body></html>
