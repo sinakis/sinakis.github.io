@@ -15,6 +15,242 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: flex-start; /* Better for mobile scrolling if content overflows */
+            min-height: 100vh;
+            overflow-x: hidden;
+            box-sizing: border-box;
+            padding: 40px 20px;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 0;
+            margin-bottom: 30px;
+            font-weight: 800;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+            text-align: center;
+        }
+
+        /* Responsive Grid Container - Stretches wide on Desktop, Stacks beautifully on Mobile */
+        #games-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1xl)); /* Adapts columns fluidly */
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+            /* Height is handled naturally by grid cells to support both layouts cleanly */
+        }
+
+        /* Solid Card Layout (No physical movement, purely visual background shifts) */
+        .game-card {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            background: linear-gradient(180deg, rgba(67, 39, 143, 0.4) 0%, rgba(29, 14, 74, 0.9) 100%);
+            border: 2px solid #573a96;
+            border-radius: 6px;
+            text-decoration: none;
+            color: #ffffff;
+            overflow: hidden;
+            position: relative;
+            box-sizing: border-box;
+            min-height: 380px; /* Maintains the tall panel aesthetic */
+            transition: border-color 0.2s ease, background 0.2s ease;
+        }
+
+        /* Inner Wrapper for the Background Image to keep clipping clean */
+        .game-card-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0.5; /* Dims image slightly so the text remains easy to read */
+            z-index: 1;
+            transition: opacity 0.2s ease;
+        }
+
+        /* Static Highlight on Active Selection */
+        .game-card:hover {
+            border-color: #ffd800;
+            background: linear-gradient(180deg, rgba(82, 49, 171, 0.6) 0%, rgba(39, 20, 97, 0.95) 100%);
+        }
+
+        .game-card:hover .game-card-bg {
+            opacity: 0.8; /* brightens the game image when highlighted */
+        }
+
+        /* Bottom Section containing Titles */
+        .game-card-info {
+            width: 100%;
+            background: #140d2d;
+            border-top: 2px solid #573a96;
+            padding: 20px 15px;
+            text-align: center;
+            box-sizing: border-box;
+            z-index: 2; /* Forces info block above the background artwork layer */
+            transition: background 0.2s ease;
+        }
+
+        .game-title {
+            margin: 0 0 6px 0;
+            font-size: 1.3rem;
+            font-weight: 700;
+            text-transform: capitalize;
+            letter-spacing: 0.5px;
+            transition: color 0.2s ease;
+        }
+
+        .game-subtitle {
+            margin: 0;
+            font-size: 0.85rem;
+            color: #bfaee3;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: color 0.2s ease;
+        }
+
+        /* Interactive color changes matching console dashboards */
+        .game-card:hover .game-card-info {
+            background: #ffd800;
+        }
+        .game-card:hover .game-title {
+            color: #140d2d;
+        }
+        .game-card:hover .game-subtitle {
+            color: #5b4600;
+        }
+
+        /* Mobile specific optimizations */
+        @media (max-width: 768px) {
+            body {
+                padding-top: 20px;
+            }
+            #games-container {
+                grid-template-columns: 1fr; /* Forces single column stack on phones */
+                gap: 16px;
+                padding: 0 10px;
+            }
+            .game-card {
+                min-height: 240px; /* Shorter card height targets comfortable scrolling on phone glass */
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Game Modes</h1>
+    
+    <div id="games-container">
+        <!-- Cards will load here instantly -->
+    </div>
+
+    <script>
+        // 🚀 ADD IMAGE PATHS HERE!
+        // Place image files (PNG/JPG) in your folders and link them below.
+        // Example path: './ygo_playtester/banner.png' or an absolute web image URL.
+        const MY_GAMES = [
+            { 
+                folder: 'ygo_playtester', 
+                subtitle: 'ygo playtester',
+                image: './ygo_playtester/banner.jpg' 
+            },
+            { 
+                folder: 'pkmn but ygo', 
+                subtitle: 'pkmn but ygo',
+                image: './pkmn but ygo/banner.jpg' 
+            },
+            { 
+                folder: 'poe_demake_phone', 
+                subtitle: 'dont you guys have phones?',
+                image: './poe_demake_phone/banner.jpg' 
+            },
+            { 
+                folder: 'AC_demake', 
+                subtitle: 'AC demake (pc controls)',
+                image: './AC_demake/banner.jpg' 
+            }
+        ];
+
+        function loadGamePanels() {
+            const container = document.getElementById('games-container');
+            container.innerHTML = ''; 
+
+            // Calculate columns dynamically for desktop styling layouts
+            if (window.innerWidth > 768) {
+                container.style.gridTemplateColumns = `repeat(${MY_GAMES.length}, 1fr)`;
+            }
+
+            MY_GAMES.forEach(game => {
+                const card = document.createElement('a');
+                card.href = `./${game.folder}/`;
+                card.className = 'game-card';
+                
+                // Creates background artwork block layer
+                const bgArt = document.createElement('div');
+                bgArt.className = 'game-card-bg';
+                if (game.image) {
+                    bgArt.style.backgroundImage = `url("${game.image}")`;
+                } else {
+                    // Default fallback if no image is listed
+                    bgArt.style.background = 'linear-gradient(135deg, #3d1b7a, #16103c)';
+                }
+                
+                const infoBlock = document.createElement('div');
+                infoBlock.className = 'game-card-info';
+                
+                const title = document.createElement('h2');
+                title.className = 'game-title';
+                title.textContent = game.folder.replace(/[-_]/g, ' '); 
+                
+                const subtitle = document.createElement('p');
+                subtitle.className = 'game-subtitle';
+                subtitle.textContent = game.subtitle;
+
+                infoBlock.appendChild(title);
+                infoBlock.appendChild(subtitle);
+                card.appendChild(bgArt);
+                card.appendChild(infoBlock);
+                container.appendChild(card);
+            });
+        }
+
+        // Initialize lists and handle window resize scaling tracking structures
+        loadGamePanels();
+        window.addEventListener('resize', () => {
+            const container = document.getElementById('games-container');
+            if (window.innerWidth > 768) {
+                container.style.gridTemplateColumns = `repeat(${MY_GAMES.length}, 1fr)`;
+            } else {
+                container.style.gridTemplateColumns = '1fr';
+            }
+        });
+    </script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hub</title>
+    <style>
+        /* Base Setup - Clean Dark Game Interface Theme */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(180deg, #2b1055, #100b26);
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             justify-content: center; /* Center horizontally and vertically */
             min-height: 100vh;
             overflow-x: hidden;
