@@ -38,11 +38,11 @@
             gap: 16px;
             width: 95%;
             max-width: 1200px;
-            height: 65vh; /* Standardizing card height */
+            height: 65vh; 
             min-height: 400px;
         }
 
-        /* Solid Column Button Card Layout */
+        /* Solid Column Button Card Layout (No Movement) */
         .game-card {
             flex: 1;
             display: flex;
@@ -59,7 +59,7 @@
             box-sizing: border-box;
         }
 
-        /* Subtle Static Border Highlight on Click/Active Selection */
+        /* Static Highlight on Active Selection */
         .game-card:hover {
             border-color: #ffd800;
             background: linear-gradient(180deg, rgba(82, 49, 171, 0.7) 0%, rgba(39, 20, 97, 0.95) 100%);
@@ -91,7 +91,7 @@
             letter-spacing: 1px;
         }
 
-        /* Highlights the first or active choice like your reference photo */
+        /* Interactive color changes matching console dashboards */
         .game-card:hover .game-card-info {
             background: #ffd800;
         }
@@ -101,6 +101,11 @@
         .game-card:hover .game-subtitle {
             color: #5b4600;
         }
+        
+        .status-msg {
+            font-size: 1.2rem;
+            color: #bfaee3;
+        }
     </style>
 </head>
 <body>
@@ -108,46 +113,87 @@
     <h1>Game Modes</h1>
     
     <div id="games-container">
-        <!-- Solid Menu Cards load here instantly -->
+        <p class="status-msg">Loading game selections...</p>
     </div>
 
     <script>
-        // 🚀 Add your exact game folder paths here
-        const GAMES = [
-            'space-shooter',
-            'game-two',
-            'game-three'
-        ];
+        // System folders/files to filter out completely
+        const IGNORED_ITEMS = ['readme.md', 'config', 'cnfg', 'index.html', 'css', 'js', 'assets', 'cname', '.git', '.github'];
 
-        function loadGames() {
+        async function autoDiscoverGames() {
             const container = document.getElementById('games-container');
-            container.innerHTML = ''; 
+            
+            try {
+                // 🚀 Uses GitHub Pages' standard web server routing directly instead of the restricted API address
+                const response = await fetch('./');
+                const text = await response.text();
+                
+                // Parse the server layout to grab the links automatically
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(text, 'text/html');
+                const links = Array.from(doc.querySelectorAll('a'));
+                
+                // Track folders to prevent duplicate buttons
+                const foundFolders = new Set();
 
-            GAMES.forEach(folderName => {
-                const card = document.createElement('a');
-                card.href = `./${folderName}/`;
-                card.className = 'game-card';
-                
-                // Content block matching the bottom row layout inside the column cards
-                const infoBlock = document.createElement('div');
-                infoBlock.className = 'game-card-info';
-                
-                const title = document.createElement('h2');
-                title.className = 'game-title';
-                title.textContent = folderName.replace(/[-_]/g, ' '); 
-                
-                const subtitle = document.createElement('p');
-                subtitle.className = 'game-subtitle';
-                subtitle.textContent = 'Launch Game';
+                links.forEach(link => {
+                    let href = link.getAttribute('href');
+                    if (!href) return;
 
-                infoBlock.appendChild(title);
-                infoBlock.appendChild(subtitle);
-                card.appendChild(infoBlock);
-                container.appendChild(card);
-            });
+                    // Clean the folder path format
+                    href = href.replace(/^\.\//, '').replace(/\/\$/, '');
+                    const nameLower = href.toLowerCase();
+
+                    // Validation checks to confirm it's a game folder
+                    if (
+                        href && 
+                        href !== '..' && 
+                        !href.includes('//') && 
+                        !href.includes('.') && 
+                        !IGNORED_ITEMS.some(ignored => nameLower.includes(ignored))
+                    ) {
+                        foundFolders.add(href);
+                    }
+                });
+
+                // Render the automated buttons
+                if (foundFolders.size === 0) {
+                    container.innerHTML = '<p class="status-msg">Drop your game folders into your GitHub repo to see them here!</p>';
+                    return;
+                }
+
+                container.innerHTML = ''; // Clear status message
+
+                foundFolders.forEach(folderName => {
+                    const card = document.createElement('a');
+                    card.href = `./${folderName}/`;
+                    card.className = 'game-card';
+                    
+                    const infoBlock = document.createElement('div');
+                    infoBlock.className = 'game-card-info';
+                    
+                    const title = document.createElement('h2');
+                    title.className = 'game-title';
+                    title.textContent = folderName.replace(/[-_]/g, ' '); 
+                    
+                    const subtitle = document.createElement('p');
+                    subtitle.className = 'game-subtitle';
+                    subtitle.textContent = 'Launch Game';
+
+                    infoBlock.appendChild(title);
+                    infoBlock.appendChild(subtitle);
+                    card.appendChild(infoBlock);
+                    container.appendChild(card);
+                });
+
+            } catch (error) {
+                console.error("Auto-discovery failed, falling back safely:", error);
+                container.innerHTML = '<p class="status-msg">Unable to scan folders automatically. Check your configuration.</p>';
+            }
         }
 
-        loadGames();
+        // Run instantly
+        autoDiscoverGames();
     </script>
 </body>
 </html>
