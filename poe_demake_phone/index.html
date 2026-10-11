@@ -389,6 +389,7 @@ const TIERK={normal:'n',magic:'m',rare:'r'};
 function playerSprite(view,fr,flash){const k='p|'+view+'|'+fr,mk=()=>buildHuman(SAVE.app,view,fr);return flash?xsF(k,mk):xs(k,mk);}
 function rollSprite(fr){return xs('r|'+fr,()=>buildRoll(SAVE.app,fr));}
 function enemySprite(type,tier,pose,fr,flash){
+  if(type==='spitter')type='spit';
   const t=TIERK[tier]||'n',k=type+'|'+t+'|'+pose+'|'+fr;
   const mk=()=>buildBiped(CRE[type],pose,fr,(type==='brute'||type==='warden')?'#ffd23a':OUTC[t]);
   return flash?xsF(k,mk):xs(k,mk);
@@ -1991,6 +1992,11 @@ function render(){
     while(ip<items.length&&items[ip].d<=d){items[ip].f();ip++;}
   }
   while(ip<items.length){items[ip].f();ip++;}
+  // walls can stand in front of things: redraw the player and enemies as ghosts, and projectiles solid, on top of the walls
+  if(mode==='tower'){
+    g.globalAlpha=.5;drawPlayer();for(const e of seenEn)drawEnemy(e);g.globalAlpha=1;
+    for(const p of projs)drawProj(p);
+  }
 
   // lightning bolts
   for(const b of bolts){
